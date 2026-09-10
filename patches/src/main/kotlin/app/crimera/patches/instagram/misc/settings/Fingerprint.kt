@@ -37,3 +37,25 @@ internal object IgFragmentActivityOnResume : Fingerprint(
     parameters = emptyList(),
     returnType = "V",
 )
+
+internal object ModalActivityOnCreate : Fingerprint(
+    name = "onCreate",
+    definingClass = "Lcom/instagram/modal/ModalActivity;",
+    parameters = listOf("Landroid/os/Bundle;"),
+    returnType = "V",
+    strings = listOf("ModalActivity.onCreate"),
+)
+
+internal object ModalActivityOnPostCreate : Fingerprint(
+    name = "onPostCreate",
+    definingClass = "Lcom/instagram/modal/ModalActivity;",
+    parameters = listOf("Landroid/os/Bundle;"),
+    returnType = "V",
+)
+
+internal object ModalActivityInitStartingFragment : Fingerprint(
+    definingClass = "Lcom/instagram/base/activity/BaseFragmentActivity;",
+    parameters = listOf("Landroid/os/Bundle;"),
+    returnType = "V",
+    strings = listOf("ModalActivity.initializeStartingFragment"),
+)

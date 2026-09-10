@@ -28,8 +28,11 @@ import app.crimera.patches.instagram.utils.Constants.CONSTANTS_DESCRIPTOR
 import app.crimera.patches.instagram.utils.Constants.LOAD_FLAGS_DESCRIPTOR
 import app.crimera.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
 import app.crimera.patches.instagram.utils.Constants.SSTS_DESCRIPTOR
+import app.crimera.patches.instagram.utils.Constants.ACTIVITY_SETTINGS_CLASS
+import app.crimera.patches.shared.parameterRegisterStart
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.patch.PatchException
@@ -39,6 +42,7 @@ import app.morphe.patches.all.misc.resources.addResourcesPatch
 import app.morphe.util.findFreeRegister
 import app.morphe.util.getReference
 import app.morphe.util.indexOfFirstInstruction
+import app.morphe.util.indexOfFirstInstructionOrThrow
 import app.morphe.util.registersUsed
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
@@ -86,6 +90,67 @@ val settingsPatch =
                     """
                     invoke-static {p0}, Lapp/morphe/extension/shared/Utils;->setActivity(Landroid/app/Activity;)V
                     """.trimIndent(),
+                )
+            }
+
+            ModalActivityOnCreate.method.apply {
+                val overrideIndex = indexOfFirstInstructionOrThrow {
+                    opcode == Opcode.INVOKE_SUPER &&
+                        getReference<MethodReference>()?.name == "onCreate"
+                } + 1
+
+                val thisRegister = parameterRegisterStart(this)
+                val freeRegister = findFreeRegister(overrideIndex, thisRegister)
+
+                addInstructionsWithLabels(
+                    overrideIndex,
+                    """
+                        invoke-static/range { v$thisRegister .. v$thisRegister }, $ACTIVITY_SETTINGS_CLASS/ActivityHook;->create(Landroid/app/Activity;)Z
+                        move-result v$freeRegister
+                        if-eqz v$freeRegister, :not_piko
+                        return-void
+                        :not_piko
+                        nop
+                    """,
+                )
+            }
+
+            ModalActivityOnPostCreate.method.apply {
+                val overrideIndex = indexOfFirstInstructionOrThrow {
+                    opcode == Opcode.INVOKE_SUPER &&
+                        getReference<MethodReference>()?.name == "onPostCreate"
+                } + 1
+
+                val thisRegister = parameterRegisterStart(this)
+                val freeRegister = findFreeRegister(overrideIndex, thisRegister)
+
+                addInstructionsWithLabels(
+                    overrideIndex,
+                    """
+                        invoke-static/range { v$thisRegister .. v$thisRegister }, $ACTIVITY_SETTINGS_CLASS/ActivityHook;->isPiko(Landroid/app/Activity;)Z
+                        move-result v$freeRegister
+                        if-eqz v$freeRegister, :not_piko_post_create
+                        return-void
+                        :not_piko_post_create
+                        nop
+                    """,
+                )
+            }
+
+            ModalActivityInitStartingFragment.method.apply {
+                val thisRegister = parameterRegisterStart(this)
+                val freeRegister = findFreeRegister(0, thisRegister)
+
+                addInstructionsWithLabels(
+                    0,
+                    """
+                        invoke-static/range { v$thisRegister .. v$thisRegister }, $ACTIVITY_SETTINGS_CLASS/ActivityHook;->isPiko(Landroid/app/Activity;)Z
+                        move-result v$freeRegister
+                        if-eqz v$freeRegister, :not_piko_init
+                        return-void
+                        :not_piko_init
+                        nop
+                    """,
                 )
             }
 
